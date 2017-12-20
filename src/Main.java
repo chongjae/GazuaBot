@@ -66,7 +66,6 @@ public class Main {
 		coinName.put("QTUM", "퀀텀");
 		coinName.put("BTG", "비트코인 골드");
 		coinName.put("EOS ", "이오스");
-
 		try {
 			fh = new FileHandler("./ChongCoinBot.log");
 			logger.addHandler(fh);
@@ -75,6 +74,7 @@ public class Main {
 		} catch (Exception e) {
 		}
 		logger.info(String.valueOf(isReallyBuy));
+		
 		while (true) {
 			try {
 				String result = api.callApi("/public/ticker/ALL", rgParams);
@@ -109,6 +109,9 @@ public class Main {
 									rapidSet.put(key, coinName.get(key) + "이 급등하였습니다. " + coinInfo.minPrice + " -> "
 											+ curPrice + "(" + rate + ")");
 									coinInfo.updateMin(date, curPrice);
+									if(coinInfo.sellCnt != 0) {
+										coinInfo.sellCnt--;
+									}
 									if (coinInfo.buyPrice == 0) {
 										coinInfo.buyPrice = curPrice;
 										if (isReallyBuy) {
@@ -128,8 +131,8 @@ public class Main {
 									if (rate <= 1.01f && coinInfo.sellCnt <= sellCount) {
 										sellSet.put(key,
 												coinName.get(key) + "를 " + coinInfo.buyPrice + "에 매수하여, " + curPrice
-														+ "에 매도시도. (" + rate + ")  -> " + coinInfo.sellCnt
-														+ "차 손절 거부" + coinInfo.isReallyBuy);
+														+ "에 매도시도. (" + rate + ")  -> " + coinInfo.sellCnt + "차 손절 거부"
+														+ coinInfo.isReallyBuy);
 										coinInfo.sellCnt = coinInfo.sellCnt + 1;
 									} else {
 										sellSet.put(key, coinName.get(key) + "를 " + coinInfo.buyPrice + "에 매수하여, "
@@ -170,7 +173,7 @@ public class Main {
 					}
 					sendMsgToTelegram(ret, true);
 				}
-				Thread.sleep(4 * 1000);
+				Thread.sleep(1000);
 				logCnt++;
 				if (logCnt == logFrequency) {
 					logCnt = 0;
@@ -228,8 +231,9 @@ public class Main {
 			} else if (buyCnt == 2) {
 				krw *= 0.7;
 			}
-			rgParams.put("units", String.valueOf(format.format(krw / (coin.buyPrice * 1.05))));
+			rgParams.put("units", String.valueOf(format.format(krw / (coin.buyPrice * 1.1f))));
 			rgParams.put("currency", coin.key);
+			logger.info(rgParams.toString()+", "+coin.buyPrice+", "+krw);
 			result = api.callApi("/trade/market_buy", rgParams);
 			JSONParser parser = new JSONParser();
 			JSONArray array = (JSONArray) ((JSONObject) parser.parse(result)).get("data");
@@ -289,11 +293,12 @@ public class Main {
 
 	@SuppressWarnings("finally")
 	public static float getBalance(String currency) {
+		String result = "";
 		float money = 0;
 		try {
 			HashMap<String, String> rgParams = new HashMap<String, String>();
 			rgParams.put("currency", "ALL");
-			String result = api.callApi("/info/balance", rgParams);
+			result = api.callApi("/info/balance", rgParams);
 
 			JSONParser parser = new JSONParser();
 
@@ -301,7 +306,7 @@ public class Main {
 
 			money = Float.valueOf(object.get("available_" + currency.toLowerCase()).toString());
 		} catch (Exception e) {
-			logger.info(e.getMessage());
+			logger.info(result);
 		} finally {
 			return money;
 		}
