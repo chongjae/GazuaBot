@@ -34,13 +34,14 @@ public class Main {
 	public static int minuteThreshold = 5 * 60;// 5 min to sec
 	public static float rapidThreshold = 1.035f;
 	public static float sellThreshold = 1.02f;
-	public static int sellCount = 3;
+	public static int sellCount = 2;
 	public static int logFrequency = 12;
 	public static int buyCnt = 0;
 	public static boolean isReallyBuy;
 	public static TelegramBot bot = new TelegramBot("");
 	public static Logger logger = Logger.getLogger("ChongCoinBot");
-	public static Api_Client api = new Api_Client("", ""); // connect key, secret key
+	public static Api_Client api = new Api_Client("",
+			""); // connect key, secret key
 
 	public static void main(String args[]) {
 
@@ -111,7 +112,7 @@ public class Main {
 									if (coinInfo.buyPrice == 0) {
 										coinInfo.buyPrice = curPrice;
 										if (isReallyBuy) {
-											buyCoin(coinInfo);
+											buyCoin(coinInfo, false);
 										}
 									}
 								}
@@ -122,7 +123,8 @@ public class Main {
 							diff = date - coinInfo.maxDate;
 							diffSecond = (diff / 1000) % 60 + (diff / 1000) / 60 * 60; // second
 							if (diffSecond <= minuteThreshold) {
-								if (coinInfo.maxPrice / curPrice >= sellThreshold && coinInfo.buyPrice != 0) {
+								if ((coinInfo.maxPrice / curPrice >= sellThreshold
+										|| coinInfo.buyPrice / curPrice >= sellThreshold) && coinInfo.buyPrice != 0) {
 									float rate = curPrice / coinInfo.buyPrice;
 									if (rate <= 1.003f && coinInfo.sellCnt <= sellCount) {
 										sellSet.put(key,
@@ -136,7 +138,7 @@ public class Main {
 										coinInfo.buyPrice = 0;
 										coinInfo.sellCnt = 0;
 										if (coinInfo.isReallyBuy) {
-											sellCoin(coinInfo);
+											sellCoin(coinInfo, false);
 										}
 									}
 									coinInfo.updateMax(date, curPrice);
@@ -214,7 +216,7 @@ public class Main {
 		}
 	}
 
-	public static void buyCoin(CoinInfo coin) {
+	public static void buyCoin(CoinInfo coin, boolean isRetry) {
 		HashMap<String, String> rgParams = new HashMap<String, String>();
 		String result = "";
 		try {
@@ -227,7 +229,7 @@ public class Main {
 			} else if (buyCnt == 2) {
 				krw *= 0.7;
 			}
-			rgParams.put("units", String.valueOf(format.format(krw / (coin.buyPrice * 1.1))));
+			rgParams.put("units", String.valueOf(format.format(krw / (coin.buyPrice * 1.05))));
 			rgParams.put("currency", coin.key);
 			result = api.callApi("/trade/market_buy", rgParams);
 			JSONParser parser = new JSONParser();
@@ -243,11 +245,14 @@ public class Main {
 		} catch (Exception e) {
 			logger.info(rgParams.toString());
 			sendMsgToTelegram("Buy fail..." + result, true);
+			if (!isRetry) {
+				buyCoin(coin, true);
+			}
 		}
 		logger.info(result);
 	}
 
-	public static void sellCoin(CoinInfo coin) {
+	public static void sellCoin(CoinInfo coin, boolean isRetry) {
 		HashMap<String, String> rgParams = new HashMap<String, String>();
 		try {
 			String unit = String.valueOf(getBalance(coin.key));
@@ -275,6 +280,9 @@ public class Main {
 		} catch (Exception e) {
 			logger.info(rgParams.toString());
 			logger.info(e.getMessage());
+			if (!isRetry) {
+				sellCoin(coin, true);
+			}
 		}
 	}
 
