@@ -219,7 +219,7 @@ public class Main {
 		HashMap<String, String> rgParams = new HashMap<String, String>();
 		String result = "";
 		try {
-			DecimalFormat format = new DecimalFormat(".####");
+			DecimalFormat format = new DecimalFormat("##.####");
 			float krw = getBalance("KRW");
 			if (buyCnt == 0) {
 				krw *= 0.3;
@@ -236,10 +236,10 @@ public class Main {
 			for (int i = 0; i < array.size(); i++) {
 				JSONObject obj = (JSONObject) array.get(i);
 				coin.buyPrice = Float.valueOf(obj.get("price").toString());
+				coin.isReallyBuy = true;
 			}
 			if (coin.isReallyBuy) {
 				buyCnt++;
-				coin.isReallyBuy = true;
 			}
 		} catch (Exception e) {
 			logger.info(rgParams.toString());
