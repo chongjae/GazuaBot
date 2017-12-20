@@ -50,23 +50,22 @@ public class Main {
 		FileHandler fh;
 		isReallyBuy = "on".equals(args[0]);
 
-		System.out.println(isReallyBuy);
 		int logCnt = 0;
 
 		HashMap<String, String> coinName = new HashMap<>();
 
-		coinName.put("BTC", "ºñÆ®ÄÚÀÎ");
-		coinName.put("ETH", "ÀÌ´õ¸®¿ò");
-		coinName.put("DASH", "´ë½Ã");
-		coinName.put("LTC", "¶óÀÌÆ®ÄÚÀÎ");
-		coinName.put("ETC", "ÀÌ´õ¸®¿ò Å¬·¡½Ä");
-		coinName.put("XRP", "¸®ÇÃ");
-		coinName.put("BCH", "ºñÆ®ÄÚÀÎ Ä³½Ã");
-		coinName.put("XMR", "¸ğ³×·Î");
-		coinName.put("ZEC", "Á¦Æ®Ä³½Ã");
-		coinName.put("QTUM", "ÄöÅÒ");
-		coinName.put("BTG", "ºñÆ®ÄÚÀÎ °ñµå");
-		coinName.put("EOS ", "ÀÌ¿À½º");
+		coinName.put("BTC", "ë¹„íŠ¸ì½”ì¸");
+		coinName.put("ETH", "ì´ë”ë¦¬ì›€");
+		coinName.put("DASH", "ëŒ€ì‹œ");
+		coinName.put("LTC", "ë¼ì´íŠ¸ì½”ì¸");
+		coinName.put("ETC", "ì´ë”ë¦¬ì›€ í´ë˜ì‹");
+		coinName.put("XRP", "ë¦¬í”Œ");
+		coinName.put("BCH", "ë¹„íŠ¸ì½”ì¸ ìºì‹œ");
+		coinName.put("XMR", "ëª¨ë„¤ë¡œ");
+		coinName.put("ZEC", "ì œíŠ¸ìºì‹œ");
+		coinName.put("QTUM", "í€€í…€");
+		coinName.put("BTG", "ë¹„íŠ¸ì½”ì¸ ê³¨ë“œ");
+		coinName.put("EOS ", "ì´ì˜¤ìŠ¤");
 
 		try {
 			fh = new FileHandler("./ChongCoinBot.log");
@@ -75,6 +74,7 @@ public class Main {
 			fh.setFormatter(formatter);
 		} catch (Exception e) {
 		}
+		logger.info(String.valueOf(isReallyBuy));
 		while (true) {
 			try {
 				String result = api.callApi("/public/ticker/ALL", rgParams);
@@ -106,8 +106,8 @@ public class Main {
 							if (diffSecond <= minuteThreshold) {
 								if (curPrice / coinInfo.minPrice >= rapidThreshold) {
 									float rate = curPrice / coinInfo.minPrice;
-									rapidSet.put(key, coinName.get(key) + "ÀÌ ±ŞµîÇÏ¿´½À´Ï´Ù. " + coinInfo.minPrice + " -> "
-											+ curPrice + "(" + "(" + rate + ")");
+									rapidSet.put(key, coinName.get(key) + "ì´ ê¸‰ë“±í•˜ì˜€ìŠµë‹ˆë‹¤. " + coinInfo.minPrice + " -> "
+											+ curPrice + "(" + rate + ")");
 									coinInfo.updateMin(date, curPrice);
 									if (coinInfo.buyPrice == 0) {
 										coinInfo.buyPrice = curPrice;
@@ -123,18 +123,17 @@ public class Main {
 							diff = date - coinInfo.maxDate;
 							diffSecond = (diff / 1000) % 60 + (diff / 1000) / 60 * 60; // second
 							if (diffSecond <= minuteThreshold) {
-								if ((coinInfo.maxPrice / curPrice >= sellThreshold
-										|| coinInfo.buyPrice / curPrice >= sellThreshold) && coinInfo.buyPrice != 0) {
+								if (coinInfo.maxPrice / curPrice >= sellThreshold && coinInfo.buyPrice != 0) {
 									float rate = curPrice / coinInfo.buyPrice;
-									if (rate <= 1.003f && coinInfo.sellCnt <= sellCount) {
+									if (rate <= 1.01f && coinInfo.sellCnt <= sellCount) {
 										sellSet.put(key,
-												coinName.get(key) + "¸¦ " + coinInfo.buyPrice + "¿¡ ¸Å¼öÇÏ¿©, " + curPrice
-														+ "¿¡ ¸ÅµµÇÏ¿´½À´Ï´Ù. (" + rate + ")  -> " + coinInfo.sellCnt
-														+ "Â÷ ¼ÕÀı °ÅºÎ" + coinInfo.isReallyBuy);
+												coinName.get(key) + "ë¥¼ " + coinInfo.buyPrice + "ì— ë§¤ìˆ˜í•˜ì—¬, " + curPrice
+														+ "ì— ë§¤ë„ì‹œë„. (" + rate + ")  -> " + coinInfo.sellCnt
+														+ "ì°¨ ì†ì ˆ ê±°ë¶€" + coinInfo.isReallyBuy);
 										coinInfo.sellCnt = coinInfo.sellCnt + 1;
 									} else {
-										sellSet.put(key, coinName.get(key) + "¸¦ " + coinInfo.buyPrice + "¿¡ ¸Å¼öÇÏ¿©, "
-												+ curPrice + "¿¡ ¸ÅµµÇÏ¿´½À´Ï´Ù. (" + rate + ") " + coinInfo.isReallyBuy);
+										sellSet.put(key, coinName.get(key) + "ë¥¼ " + coinInfo.buyPrice + "ì— ë§¤ìˆ˜í•˜ì—¬, "
+												+ curPrice + "ì— ë§¤ë„í•˜ì˜€ìŠµë‹ˆë‹¤. (" + rate + ") " + coinInfo.isReallyBuy);
 										coinInfo.buyPrice = 0;
 										coinInfo.sellCnt = 0;
 										if (coinInfo.isReallyBuy) {
@@ -244,7 +243,7 @@ public class Main {
 			}
 		} catch (Exception e) {
 			logger.info(rgParams.toString());
-			sendMsgToTelegram("Buy fail..." + result, true);
+			sendMsgToTelegram("Buy fail..." + rgParams + result, true);
 			if (!isRetry) {
 				buyCoin(coin, true);
 			}
@@ -254,6 +253,7 @@ public class Main {
 
 	public static void sellCoin(CoinInfo coin, boolean isRetry) {
 		HashMap<String, String> rgParams = new HashMap<String, String>();
+		String result = "";
 		try {
 			String unit = String.valueOf(getBalance(coin.key));
 			try {
@@ -270,7 +270,7 @@ public class Main {
 			}
 			rgParams.put("units", "" + unit);
 			rgParams.put("currency", coin.key);
-			String result = api.callApi("/trade/market_sell", rgParams);
+			result = api.callApi("/trade/market_sell", rgParams);
 			JSONParser parser = new JSONParser();
 			if ("0000".equals(((JSONObject) parser.parse(result)).get("status").toString())) {
 				coin.isReallyBuy = false;
@@ -280,6 +280,7 @@ public class Main {
 		} catch (Exception e) {
 			logger.info(rgParams.toString());
 			logger.info(e.getMessage());
+			sendMsgToTelegram("Sell fail..." + rgParams + result, true);
 			if (!isRetry) {
 				sellCoin(coin, true);
 			}
@@ -313,6 +314,7 @@ public class Main {
 		public float minPrice;
 		public float maxPrice;
 		public float buyPrice;
+		public float cutPrice;
 		public int sellCnt;
 		public boolean isReallyBuy = false;
 
