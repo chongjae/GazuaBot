@@ -35,13 +35,15 @@ public class Main {
 	public static float rapidThreshold = 1.035f;
 	public static float sellThreshold = 1.02f;
 	public static int sellCount = 2;
-	public static int logFrequency = 12;
+	public static int logFrequency = 60;
 	public static int buyCnt = 0;
 	public static boolean isReallyBuy;
 	public static TelegramBot bot = new TelegramBot("");
 	public static Logger logger = Logger.getLogger("ChongCoinBot");
 	public static Api_Client api = new Api_Client("",
 			""); // connect key, secret key
+	
+	public static float currentSum = 0f;
 
 	public static void main(String args[]) {
 
@@ -91,29 +93,32 @@ public class Main {
 						date = Long.parseLong(object.get(key).toString());
 					} else {
 						if (coins.containsKey(key)) {
-							float curPrice = Float
+							float curBuyPrice = Float
 									.parseFloat(((JSONObject) object.get(key)).get("buy_price").toString());
+							
+							float curSellPrice = Float
+									.parseFloat(((JSONObject) object.get(key)).get("sell_price").toString());
 							CoinInfo coinInfo = coins.get(key);
-							if (curPrice > coinInfo.maxPrice) {
-								coinInfo.maxPrice = curPrice;
+							if (curBuyPrice > coinInfo.maxPrice) {
+								coinInfo.maxPrice = curBuyPrice;
 								coinInfo.maxDate = date;
-							} else if (curPrice < coinInfo.minPrice) {
-								coinInfo.minPrice = curPrice;
+							} else if (curBuyPrice < coinInfo.minPrice) {
+								coinInfo.minPrice = curBuyPrice;
 								coinInfo.minDate = date;
 							}
 							long diff = date - coinInfo.minDate;
 							long diffSecond = (diff / 1000) % 60 + (diff / 1000) / 60 * 60; // second
 							if (diffSecond <= minuteThreshold) {
-								if (curPrice / coinInfo.minPrice >= rapidThreshold) {
-									float rate = curPrice / coinInfo.minPrice;
+								if (curBuyPrice / coinInfo.minPrice >= rapidThreshold && curSellPrice / curBuyPrice < sellThreshold) {
+									float rate = curBuyPrice / coinInfo.minPrice;
 									rapidSet.put(key, coinName.get(key) + "이 급등하였습니다. " + coinInfo.minPrice + " -> "
-											+ curPrice + "(" + rate + ")");
-									coinInfo.updateMin(date, curPrice);
+											+ curBuyPrice + "(" + rate + ")");
+									coinInfo.updateMin(date, curBuyPrice);
 									if(coinInfo.sellCnt != 0) {
 										coinInfo.sellCnt--;
 									}
 									if (coinInfo.buyPrice == 0) {
-										coinInfo.buyPrice = curPrice;
+										coinInfo.buyPrice = curBuyPrice;
 										if (isReallyBuy) {
 											buyCoin(coinInfo, false);
 										}
@@ -121,33 +126,31 @@ public class Main {
 								}
 							} else {
 								System.out.println("update min by over 5 min");
-								coinInfo.updateMin(date, curPrice);
+								coinInfo.updateMin(date, curBuyPrice);
 							}
 							diff = date - coinInfo.maxDate;
 							diffSecond = (diff / 1000) % 60 + (diff / 1000) / 60 * 60; // second
-							if (diffSecond <= minuteThreshold || coinInfo.maxPrice / curPrice >= sellThreshold) {
-								if (coinInfo.maxPrice / curPrice >= sellThreshold && coinInfo.buyPrice != 0) {
-									float rate = curPrice / coinInfo.buyPrice;
+							if (diffSecond <= minuteThreshold || coinInfo.maxPrice / curBuyPrice >= sellThreshold) {
+								if (coinInfo.maxPrice / curBuyPrice >= sellThreshold && coinInfo.buyPrice != 0) {
+									float rate = curBuyPrice / coinInfo.buyPrice;
 									if (rate <= 1.01f && coinInfo.sellCnt < sellCount) {
 										sellSet.put(key,
-												coinName.get(key) + "를 " + coinInfo.buyPrice + "에 매수하여, " + curPrice
+												coinName.get(key) + "를 " + coinInfo.buyPrice + "에 매수하여, " + curBuyPrice
 														+ "에 매도시도. (" + rate + ")  -> " + coinInfo.sellCnt + "차 손절 거부"
 														+ coinInfo.isReallyBuy);
 										coinInfo.sellCnt = coinInfo.sellCnt + 1;
 									} else {
 										sellSet.put(key, coinName.get(key) + "를 " + coinInfo.buyPrice + "에 매수하여, "
-												+ curPrice + "에 매도하였습니다. (" + rate + ") " + coinInfo.isReallyBuy);
+												+ curBuyPrice + "에 매도하였습니다. (" + rate + ") " + coinInfo.isReallyBuy);
+										sellCoin(coinInfo, false);
 										coinInfo.buyPrice = 0;
 										coinInfo.sellCnt = 0;
-										if (coinInfo.isReallyBuy) {
-											sellCoin(coinInfo, false);
-										}
 									}
-									coinInfo.updateMax(date, curPrice);
+									coinInfo.updateMax(date, curBuyPrice);
 								}
 							} else {
-								System.out.println("update max by over 5 min");
-								coinInfo.updateMax(date, curPrice);
+								System.out.println(key + " update max by over 5 min");
+								coinInfo.updateMax(date, curBuyPrice);
 								if (coinInfo.buyPrice != 0) {
 									coinInfo.sellCnt = 0;
 								}
@@ -251,6 +254,7 @@ public class Main {
 			if (!isRetry) {
 				buyCoin(coin, true);
 			}
+			coin.buyPrice = 0f;
 		}
 		logger.info(result);
 	}
@@ -285,12 +289,24 @@ public class Main {
 			try {
 				result = api.callApi("/trade/market_sell", rgParams);
 				JSONParser parser = new JSONParser();
-				if ("0000".equals(((JSONObject) parser.parse(result)).get("status").toString())) {
+				JSONObject object = (JSONObject) parser.parse(result);
+				if ("0000".equals(object.get("status").toString())) {
+
+					JSONArray array = (JSONArray) object.get("data");
+					float sellPrice = 0;
+					for (int i = 0; i < array.size(); i++) {
+						JSONObject obj = (JSONObject) array.get(i);
+						sellPrice = Float.valueOf(obj.get("price").toString());
+					}
+					if(sellPrice != 0) {
+						currentSum += 100f - (sellPrice / coin.buyPrice) * 100f;
+					}
 					coin.isReallyBuy = false;
 					buyCnt--;
+					sendMsgToTelegram("Current Sum : " + currentSum, true);
 					break;
 				} else {
-					Thread.sleep(500);
+					Thread.sleep(1000);
 				}
 			} catch (Exception e) {
 				logger.info(rgParams.toString());
