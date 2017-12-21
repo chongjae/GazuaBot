@@ -125,10 +125,10 @@ public class Main {
 							}
 							diff = date - coinInfo.maxDate;
 							diffSecond = (diff / 1000) % 60 + (diff / 1000) / 60 * 60; // second
-							if (diffSecond <= minuteThreshold) {
+							if (diffSecond <= minuteThreshold || coinInfo.maxPrice / curPrice >= sellThreshold) {
 								if (coinInfo.maxPrice / curPrice >= sellThreshold && coinInfo.buyPrice != 0) {
 									float rate = curPrice / coinInfo.buyPrice;
-									if (rate <= 1.01f && coinInfo.sellCnt <= sellCount) {
+									if (rate <= 1.01f && coinInfo.sellCnt < sellCount) {
 										sellSet.put(key,
 												coinName.get(key) + "를 " + coinInfo.buyPrice + "에 매수하여, " + curPrice
 														+ "에 매도시도. (" + rate + ")  -> " + coinInfo.sellCnt + "차 손절 거부"
@@ -279,6 +279,8 @@ public class Main {
 			if ("0000".equals(((JSONObject) parser.parse(result)).get("status").toString())) {
 				coin.isReallyBuy = false;
 				buyCnt--;
+			} else {
+				throw new Exception();
 			}
 			logger.info(result);
 		} catch (Exception e) {
@@ -299,6 +301,8 @@ public class Main {
 			HashMap<String, String> rgParams = new HashMap<String, String>();
 			rgParams.put("currency", "ALL");
 			result = api.callApi("/info/balance", rgParams);
+
+			System.out.println(result);
 
 			JSONParser parser = new JSONParser();
 
