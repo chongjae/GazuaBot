@@ -151,9 +151,6 @@ public class Main {
 							} else {
 								System.out.println(key + " update max by over 5 min");
 								coinInfo.updateMax(date, curBuyPrice);
-								if (coinInfo.buyPrice != 0) {
-									coinInfo.sellCnt = 0;
-								}
 							}
 						} else {
 							CoinInfo coinInfo = new CoinInfo(key, date,
