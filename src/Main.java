@@ -258,39 +258,53 @@ public class Main {
 	public static void sellCoin(CoinInfo coin, boolean isRetry) {
 		HashMap<String, String> rgParams = new HashMap<String, String>();
 		String result = "";
+
+		String unit = String.valueOf(getBalance(coin.key));
 		try {
-			String unit = String.valueOf(getBalance(coin.key));
+			unit = unit.substring(0, unit.indexOf(".") + 5);
+		} catch (Exception e) {
 			try {
-				unit = unit.substring(0, unit.indexOf(".") + 5);
-			} catch (Exception e) {
+				unit = unit.substring(0, unit.indexOf(".") + 4);
+			} catch (Exception e1) {
 				try {
-					unit = unit.substring(0, unit.indexOf(".") + 4);
-				} catch (Exception e1) {
-					try {
-						unit = unit.substring(0, unit.indexOf(".") + 3);
-					} catch (Exception e2) {
-					}
+					unit = unit.substring(0, unit.indexOf(".") + 3);
+				} catch (Exception e2) {
 				}
 			}
-			rgParams.put("units", "" + unit);
-			rgParams.put("currency", coin.key);
-			result = api.callApi("/trade/market_sell", rgParams);
-			JSONParser parser = new JSONParser();
-			if ("0000".equals(((JSONObject) parser.parse(result)).get("status").toString())) {
-				coin.isReallyBuy = false;
-				buyCnt--;
-			} else {
-				throw new Exception();
+		}
+		rgParams.put("units", "" + unit);
+		rgParams.put("currency", coin.key);
+		
+		int retryCnt = 0;
+
+		while (true) {
+			if (retryCnt == 10) {
+				break;
 			}
-			logger.info(result);
-		} catch (Exception e) {
-			logger.info(rgParams.toString());
-			logger.info(e.getMessage());
-			sendMsgToTelegram("Sell fail..." + rgParams + result, true);
-			if (!isRetry) {
-				sellCoin(coin, true);
+			retryCnt++;
+			try {
+				result = api.callApi("/trade/market_sell", rgParams);
+				JSONParser parser = new JSONParser();
+				if ("0000".equals(((JSONObject) parser.parse(result)).get("status").toString())) {
+					coin.isReallyBuy = false;
+					buyCnt--;
+					break;
+				} else {
+					Thread.sleep(500);
+				}
+			} catch (Exception e) {
+				logger.info(rgParams.toString());
+				logger.info(e.getMessage());
+				sendMsgToTelegram("Sell fail..." + rgParams + result, true);
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 			}
 		}
+		logger.info(result);
 	}
 
 	@SuppressWarnings("finally")
